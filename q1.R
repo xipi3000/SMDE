@@ -1,3 +1,5 @@
+#a)
+
 airplanes<-read.csv2("airplane_price_dataset.csv",sep=",")
 # Model = Cat, Year = Cat, NumOfEng= Cat, EngType= Cat, Capacity = Quant, Range = Quant, FuelCons = Quant, HourMantain = Quant, Age = Cat, SalesReg= Cat, PRice = QUant
 
@@ -14,6 +16,7 @@ airplanes <- airplanes %>%
     Age = as.character(Age),
   )
 
+#b)
 summary(airplanes)
 library(dplyr)
 
@@ -24,6 +27,12 @@ summary_by_engine <- airplanes %>%
   ), na.rm = TRUE))
 
 
+#c)
 
 boxplot(airplanes$FuelConsumption.L.h.~airplanes$EngineType)
+
+#d)
+
+round(t.test(airplanes$Capacity)$conf.int, 2)
+
 
