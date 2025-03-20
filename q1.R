@@ -35,6 +35,68 @@ boxplot(airplanes$FuelConsumption.L.h.~airplanes$EngineType)
 
 round(t.test(airplanes$Capacity)$conf.int, 2)
 
+
 #e)
 tab <- table(airplanes$Model,airplanes$SalesRegion)
 prop.table(tab)
+
+
+#f)
+filtered_airplanes <- airplanes %>%
+  filter(Model %in% c("Bombardier CRJ200", "Cessna 172"))
+
+#g)
+# Transformation of price to logarithmic scale
+filtered_airplanes <- filtered_airplanes %>%
+  mutate(Log_Price = log(Price))
+
+
+ggplot(filtered_airplanes, aes(x = Log_Price, fill = EngineType, color = EngineType)) +
+  geom_density(alpha = 0.4) +  # overlapping distributions
+  labs(title = "Density Plot of Price by Engine Type",
+       x = "Price", 
+       y = "Density") +
+  theme_minimal()
+
+ggplot(filtered_airplanes, aes(x = EngineType, y = Log_Price, fill = EngineType)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Log-Transformed Price by Engine Type",
+       x = "Engine Type",
+       y = "Log(Price)") +
+  theme_minimal()
+
+#h)
+median_price <- median(filtered_airplanes$Price, na.rm = TRUE)
+
+filtered_airplanes <- filtered_airplanes %>%
+  mutate(PriceCategory = ifelse(Price <= median_price, "Low", "High"))
+
+print(filtered_airplanes)
+
+#i)
+cross_table <- table(filtered_airplanes$Model, filtered_airplanes$PriceCategory)
+print(cross_table)
+
+conditional_probs <- prop.table(cross_table, margin = 1)  # Normalize by row (Model)
+print(conditional_probs)
+
+#j)
+chi_test <- chisq.test(cross_table)
+print(chi_test)
+
+#K)
+cross_table2 <- table(filtered_airplanes$Model, filtered_airplanes$SalesRegion)
+print(cross_table2)
+
+chi_test2 <- chisq.test(cross_table2)
+print(chi_test2)
+
+#Visualization of Data
+ggplot(filtered_airplanes, aes(x = Model, fill = SalesRegion)) +
+  geom_bar(position = "fill") + 
+  labs(title = "Proportion of Sales by Airplane Model",
+       x = "Airplane Model", 
+       y = "Proportion",
+       fill = "Sales Region") +
+  theme_minimal()
+
