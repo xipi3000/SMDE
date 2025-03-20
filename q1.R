@@ -36,6 +36,11 @@ boxplot(airplanes$FuelConsumption.L.h.~airplanes$EngineType)
 round(t.test(airplanes$Capacity)$conf.int, 2)
 
 
+#e)
+tab <- table(airplanes$Model,airplanes$SalesRegion)
+prop.table(tab)
+
+
 #f)
 filtered_airplanes <- airplanes %>%
   filter(Model %in% c("Bombardier CRJ200", "Cessna 172"))
@@ -94,3 +99,4 @@ ggplot(filtered_airplanes, aes(x = Model, fill = SalesRegion)) +
        y = "Proportion",
        fill = "Sales Region") +
   theme_minimal()
+
