@@ -35,4 +35,6 @@ boxplot(airplanes$FuelConsumption.L.h.~airplanes$EngineType)
 
 round(t.test(airplanes$Capacity)$conf.int, 2)
 
-
+#e)
+tab <- table(airplanes$Model,airplanes$SalesRegion)
+prop.table(tab)
