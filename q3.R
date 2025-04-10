@@ -1,5 +1,5 @@
+#Loading data set
 airplanes<-read.csv2("airplane_price_dataset.csv",sep=",")
-# Model = Cat, Year = Cat, NumOfEng= Cat, EngType= Cat, Capacity = Quant, Range = Quant, FuelCons = Quant, HourMantain = Quant, Age = Cat, SalesReg= Cat, PRice = QUant
 library(dplyr)
 
 
@@ -15,60 +15,46 @@ airplanes <- airplanes %>%
     Price... = as.numeric(Price...),
   )
 
+#Plot the price
 hist(airplanes$Price...)
+#The data is skewd, we will try to fix it with a transformation
 
-hist(airplanes$Price...)
+#Transform with logarithm
+airplanes$log10_price <- log10(airplanes$Price +1)
 
-
-# Create log10-transformed price (handles zeros/negative prices if they exist)
-airplanes$log10_price <- log10(airplanes$Price +1) #+ 1)  # +1 avoids -Inf if Price=0
+#Price becomes normal data, but is segmented
 hist(airplanes$log10_price)
 fan <- airplanes[airplanes$EngineType == "Turbofan", ]
 piston <-  airplanes[airplanes$EngineType == "Piston", ]
 
+#Data is normal
 hist(piston$log10_price)
-hist(fan$log10_price)
-# 
-# fan$price_tier <- cut(fan$log10_price,
-#                       breaks = c(0, 7.6, 8.3, Inf),  # Adjust break points as needed
-#                       labels = c("Low", "Mid", "High"))
 
-# 
-# fan_low <- fan[fan$price_tier == "Low", ]
-# fan_mid <- fan[fan$price_tier == "Mid", ]
-# fan_high <- fan[fan$price_tier == "High" ,]
+
+#Data still segmented
+hist(fan$log10_price)
+
 
 fan_low <- fan[fan$Model == "Bombardier CRJ200", ]
 fan_mid <- fan[fan$Model %in% c("Airbus A320", "Boeing 737"), ]
 fan_high <- fan[fan$Model %in% c("Airbus A350","Boeing 777")  ,]
 
+#Finally got rid of segmentation
 hist(fan_low$log10_price)
 hist(fan_mid$log10_price)
 hist(fan_high$log10_price)
 
-indep_vars <- c("ProductionYear", "NumberofEngines", "Capacity", "Range.km.", "FuelConsumption.L.h.", "HourlyMaintenance...", "Age")
 
-
-
-
-models <- list()
 # Create simple linear regression for each numerical variable
+indep_vars <- c("ProductionYear", "NumberofEngines", "Capacity", "Range.km.", "FuelConsumption.L.h.", "HourlyMaintenance...", "Age")
+models <- list()
 for(var in indep_vars) {
   formula <- as.formula(paste("log10_price ~ ", var))
   models[[var]] <- formula
 }
 
-
-
-regresions <- list()
-for(var in indep_vars) {
-  formula <- as.formula(paste("log10_price ~ ", var))
-  regresions[[var]] <- lm(formula,data = piston)
-}
-
-
-
-# If p-value is > 0.05 we cannot say that alternative hypothesis is true
+op<-par(mfrow=c(3,3))
+#The only good ones are production year and age
 plot(models[["ProductionYear"]],data = piston)
 plot(models[["NumberofEngines"]],data = piston)
 plot(models[["Capacity"]],data = piston)
@@ -76,36 +62,24 @@ plot(models[["Range.km."]],data = piston)
 plot(models[["FuelConsumption.L.h."]],data = piston)
 plot(models[["HourlyMaintenance..."]],data = piston)
 plot(models[["Age"]],data = piston)
-
-
+par(op)
+#Both have the same correlation, either of them can be chosen
 cor.test(piston$log10_price,piston$ProductionYear)
 cor.test(piston$log10_price,piston$Age)
 
 
-summary(lm(piston$log10_price~piston$ProductionYear))
-
-# x2_2<-(piston$ProductionYear)^2
-# reg2_2<-lm(piston$log10_price~piston$ProductionYear+x2_2)
-# summary(reg2_2)
-
-x2_2<-(piston$ProductionYear)^2
-piston_2<-lm(piston$log10_price~piston$ProductionYear+x2_2)
+#We choose age, and as it is parabolic we try to increase R2 with the exponential
+models[["Age2"]] <-log10_price ~ (Age+I(Age^2) )
+piston_1<-lm(models[["Age"]],data = piston)
+piston_2<-lm(models[["Age2"]],data = piston)
+summary(piston_1)
 summary(piston_2)
 
-# 
-# young_piston <- piston[piston$Age < 25, ]
-# 
-# cor.test(young_piston$log10_price,young_piston$Age)
-# plot(young_piston$log10_price~young_piston$Age)
-# summary(lm(young_piston$log10_price~young_piston$Age))
 
-
-
+#Same procedings to the other segmentations
 plot(models[["ProductionYear"]],data = fan_low)
 plot(models[["Age"]],data = fan_low)
-# x2_2<-(fan_low$ProductionYear)^2
-# reg2_2<-lm(fan_low$log10_price~fan_low$ProductionYear+x2_2)
-# summary(reg2_2)
+
 
 x2_2<-(fan_low$Age)^2
 fan_low_2<-lm(fan_low$log10_price~fan_low$Age+x2_2)
@@ -119,21 +93,11 @@ plot(models[["ProductionYear"]],data = fan_high)
 plot(models[["Age"]],data = fan_high)
 
 
-library(ggplot2)
-# Check linearity of each predictor
-p1 <- ggplot(piston, aes(ProductionYear, log10_price)) + 
-  geom_point() + geom_smooth(method = "loess")
-p2 <- ggplot(piston, aes(Age, log10_price)) + 
-  geom_point() + geom_smooth(method = "loess")
-gridExtra::grid.arrange(p1, p2, ncol = 2)
-
+#B) Create our multivariable model with production year and age
 multivar_model <- lm(log10_price ~( ProductionYear+I(ProductionYear^2)) + (Age+I(Age^2)), data = piston)
-#multivar_model <- lm(log10_price ~( ProductionYear) + (Age), data = piston)
 
-summary(multivar_model)
-plot(residuals(multivar_model))
 
-vif(multivar_model)
+
 
 summary(multivar_model)
 summary(piston_2)
@@ -142,7 +106,6 @@ summary(piston_2)
 #Shapiro Wilks Test
 shapiro.test(residuals(multivar_model))
 shapiro.test(residuals(piston_2))
-shapiro.test(residuals(fan_low_2))
 # Using Histogram
 hist(residuals(multivar_model))
 hist(residuals(piston_2))
@@ -158,19 +121,167 @@ bptest(piston_2)
 dwtest(multivar_model, alternative = "two.sided")
 dwtest(piston_2, alternative = "two.sided")
 
+#After all the tests we see that they have exacly the same resutls because age and production year are the same, one just has negative slope and the other positive
+#So the multivariable model is the same as the single one
 
+
+
+#C) Create new column for the distinction of model
 fan_high$Category <- ifelse(grepl("Airbus", fan_high$Model), "Airbus",
                             ifelse(grepl("Boeing", fan_high$Model), "Boeing", "Other"))
 
 # Convert it to a factor
 fan_high$Category <- factor(fan_high$Category)
 
-x2_2<-(piston$Age)^2
-factor_fan_high_reg <- lm(log10_price ~ (Age+I(Age^2)  )+ Category, data = fan_high)
+#New model is created
 
-fan_high_reg <- lm(log10_price ~ (Age+I(Age^2)  ), data = fan_high)
 
-summary(reg2_3)
-hist(residuals(factor_fan_high_reg))
-hist(residuals(fan_high_reg))
-anova(fan_high_reg, factor_fan_high_reg)
+models[["Age2_Category"]] <-log10_price ~ (Age+I(Age^2) +Category )
+
+factor_fan_high_reg <- lm(models[["Age2_Category"]], data = fan_high)
+
+fan_high_reg <- lm(models[["Age2"]] , data = fan_high)
+
+#Comparing it to the one without the category
+summary(factor_fan_high_reg) 
+summary(fan_high_reg)
+
+
+###1. Normality###
+#Shapiro Wilks Test
+shapiro.test(residuals(factor_fan_high_reg))
+shapiro.test(residuals(fan_high_reg))
+### 2. Homogenity of Variance ###
+##Breusch Pagan Test
+library(lmtest)
+bptest(factor_fan_high_reg)
+bptest(fan_high_reg)
+### 3. The independence of errors ### 
+dwtest(factor_fan_high_reg, alternative = "two.sided")
+dwtest(fan_high_reg, alternative = "two.sided")
+
+#The one with category has better results
+
+
+#The same with the other dataset
+fan_mid$Category <- ifelse(grepl("Airbus", fan_mid$Model), "Airbus",
+                            ifelse(grepl("Boeing", fan_mid$Model), "Boeing", "Other"))
+fan_mid$Category <- factor(fan_mid$Category)
+
+
+factor_fan_mid_reg <- lm(models[["Age2_Category"]], data = fan_mid)
+fan_mid_reg <- lm(models[["Age2"]], data = fan_mid)
+
+summary(factor_fan_mid_reg) #Better
+summary(fan_mid_reg)
+
+###1. Normality###
+#Shapiro Wilks Test
+shapiro.test(residuals(factor_fan_mid_reg))
+shapiro.test(residuals(fan_mid_reg))
+### 2. Homogenity of Variance ###
+##Breusch Pagan Test
+library(lmtest)
+bptest(factor_fan_mid_reg)
+bptest(fan_mid_reg)
+## 3. The independence of errors ###
+dwtest(factor_fan_mid_reg, alternative = "two.sided")
+dwtest(fan_mid_reg, alternative = "two.sided")
+
+#d)
+
+n <- nrow(piston)
+train.sample1 <- sample(1:n, round(0.67*n))
+train.set1 <- piston[train.sample1, ] 
+test.set1 <- piston[-train.sample1, ] 
+
+train.model1 <- lm(models[["Age2"]] , data = train.set1)
+
+yhat<-predict(train.model1, test.set1, interval="prediction")
+
+y<-test.set1$log10_price
+
+error<-cbind(yhat[,1,drop=FALSE],y,(y-yhat[,1])^2)
+sqr_err<-error[,3]
+mse<-mean(sqr_err)
+### Root Mean Square Error ###
+RMSE1<-sqrt(mse/(nrow(test.set1)))
+RMSE1
+RMSE_train1<- sqrt(mean((train.model1$residuals)^2)/nrow(train.set1))
+RMSE_train1
+
+
+
+
+
+n <- nrow(fan_low)
+train.sample1 <- sample(1:n, round(0.67*n))
+train.set1 <- fan_low[train.sample1, ] 
+test.set1 <- fan_low[-train.sample1, ] 
+
+train.model1 <- lm(models[["Age2"]] , data = train.set1)
+
+yhat<-predict(train.model1, test.set1, interval="prediction")
+
+y<-test.set1$log10_price
+
+error<-cbind(yhat[,1,drop=FALSE],y,(y-yhat[,1])^2)
+sqr_err<-error[,3]
+mse<-mean(sqr_err)
+### Root Mean Square Error ###
+RMSE1<-sqrt(mse/(nrow(test.set1)))
+RMSE1
+RMSE_train1<- sqrt(mean((train.model1$residuals)^2)/nrow(train.set1))
+RMSE_train1
+
+
+
+
+
+
+
+n <- nrow(fan_mid)
+train.sample1 <- sample(1:n, round(0.67*n))
+train.set1 <- fan_mid[train.sample1, ] 
+test.set1 <- fan_mid[-train.sample1, ] 
+
+train.model1 <- lm(models[["Age2_Category"]] , data = train.set1)
+
+yhat<-predict(train.model1, test.set1, interval="prediction")
+
+y<-test.set1$log10_price
+
+error<-cbind(yhat[,1,drop=FALSE],y,(y-yhat[,1])^2)
+sqr_err<-error[,3]
+mse<-mean(sqr_err)
+### Root Mean Square Error ###
+RMSE1<-sqrt(mse/(nrow(test.set1)))
+RMSE1
+RMSE_train1<- sqrt(mean((train.model1$residuals)^2)/nrow(train.set1))
+RMSE_train1
+
+
+
+
+
+n <- nrow(fan_high)
+train.sample1 <- sample(1:n, round(0.67*n))
+train.set1 <- fan_high[train.sample1, ] 
+test.set1 <- fan_high[-train.sample1, ] 
+
+train.model1 <- lm(models[["Age2_Category"]] , data = train.set1)
+
+yhat<-predict(train.model1, test.set1, interval="prediction")
+
+y<-test.set1$log10_price
+
+error<-cbind(yhat[,1,drop=FALSE],y,(y-yhat[,1])^2)
+sqr_err<-error[,3]
+mse<-mean(sqr_err)
+### Root Mean Square Error ###
+RMSE1<-sqrt(mse/(nrow(test.set1)))
+RMSE1
+RMSE_train1<- sqrt(mean((train.model1$residuals)^2)/nrow(train.set1))
+RMSE_train1
+
+
