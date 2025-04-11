@@ -1,9 +1,9 @@
+library(dplyr)
+library(ggplot2)
 #a)
 
-airplanes<-read.csv2("airplane_price_dataset.csv",sep=",")
-# Model = Cat, Year = Cat, NumOfEng= Cat, EngType= Cat, Capacity = Quant, Range = Quant, FuelCons = Quant, HourMantain = Quant, Age = Cat, SalesReg= Cat, PRice = QUant
-
-
+airplanes <- read.csv2("airplane_price_dataset.csv",sep=",")
+# Model = Cat, Year = Cat, NumOfEng= Cat, EngType= Cat, Capacity = Quant, Range = Quant, FuelCons = Quant, HourMantain = Quant, Age = Quant, SalesReg = Cat, PRice = Quant (log)
 
 airplanes <- airplanes %>%
   mutate(
@@ -13,18 +13,26 @@ airplanes <- airplanes %>%
     HourlyMaintenance... = as.numeric(HourlyMaintenance...),
     NumberofEngines = as.character(NumberofEngines),
     ProductionYear = as.character(ProductionYear),
-    Age = as.character(Age),
+    Age = as.numeric(Age),
+    Price... = log10(as.numeric(Price...))
   )
 
 #b)
-summary(airplanes)
-library(dplyr)
+summary(airplanes$Price...)
+summary(airplanes$FuelConsumption.L.h.)
 
-summary_by_engine <- airplanes %>%
+#for (engineType in unique(airplanes$EngineType)) {
+#  airplanes_s <- airplanes[airplanes$EngineType == engineType,]
+#  
+#  cat("===== ", engineType, " =====\nPrice:\n")
+#  print(summary(airplanes_s$Price...))
+#  cat("Fuel consumption:\n")
+#  print(summary(airplanes_s$FuelConsumption.L.h.))
+#}
+
+airplanes %>%
   group_by(EngineType) %>%
-  summarise(across(where(is.numeric), list(
-    mean = mean
-  ), na.rm = TRUE))
+  summarise(n = n(), price_mean = mean(Price...), price_sd = sd(Price...), fuel_mean = mean(FuelConsumption.L.h.), fuel_sd = sd(FuelConsumption.L.h.))
 
 
 #c)
@@ -33,43 +41,43 @@ boxplot(airplanes$FuelConsumption.L.h.~airplanes$EngineType)
 
 #d)
 
-round(t.test(airplanes$Capacity)$conf.int, 2)
+for (engineType in unique(airplanes$EngineType)) {
+ airplanes_s <- airplanes[airplanes$EngineType == engineType,]
+
+ cat("===== ", engineType, " =====\n")
+ print(round(t.test(airplanes_s$FuelConsumption.L.h.)$conf.int[1:2], 2))
+}
 
 
 #e)
 tab <- table(airplanes$Model,airplanes$SalesRegion)
-prop.table(tab)
+chisq.test(tab)
 
 
-#f)
+# f)
 filtered_airplanes <- airplanes %>%
   filter(Model %in% c("Bombardier CRJ200", "Cessna 172"))
 
 #g)
-# Transformation of price to logarithmic scale
-filtered_airplanes <- filtered_airplanes %>%
-  mutate(Log_Price = log(Price))
-
-
-ggplot(filtered_airplanes, aes(x = Log_Price, fill = EngineType, color = EngineType)) +
+ggplot(filtered_airplanes, aes(x = Price..., fill = EngineType, color = EngineType)) +
   geom_density(alpha = 0.4) +  # overlapping distributions
   labs(title = "Density Plot of Price by Engine Type",
-       x = "Price", 
+       x = "Log10(Price)", 
        y = "Density") +
   theme_minimal()
 
-ggplot(filtered_airplanes, aes(x = EngineType, y = Log_Price, fill = EngineType)) +
+ggplot(filtered_airplanes, aes(x = EngineType, y = Price..., fill = EngineType)) +
   geom_boxplot() +
   labs(title = "Boxplot of Log-Transformed Price by Engine Type",
        x = "Engine Type",
-       y = "Log(Price)") +
+       y = "Log10(Price)") +
   theme_minimal()
 
 #h)
-median_price <- median(filtered_airplanes$Price, na.rm = TRUE)
+median_price <- median(filtered_airplanes$Price..., na.rm = TRUE)
 
 filtered_airplanes <- filtered_airplanes %>%
-  mutate(PriceCategory = ifelse(Price <= median_price, "Low", "High"))
+  mutate(PriceCategory = ifelse(Price... <= median_price, "Low", "High"))
 
 print(filtered_airplanes)
 
@@ -87,6 +95,12 @@ print(chi_test)
 #K)
 cross_table2 <- table(filtered_airplanes$Model, filtered_airplanes$SalesRegion)
 print(cross_table2)
+
+prop.table(table(filtered_airplanes$SalesRegion))
+prop.table(table(filtered_airplanes$Model))
+prop.table(cross_table2, 1)
+prop.table(cross_table2, 2)
+
 
 chi_test2 <- chisq.test(cross_table2)
 print(chi_test2)
