@@ -10,7 +10,6 @@ airplanes <- airplanes %>%
     FuelConsumption.L.h. = as.numeric(FuelConsumption.L.h.),
     HourlyMaintenance... = as.numeric(HourlyMaintenance...),
     NumberofEngines = as.numeric(NumberofEngines),
-    ProductionYear = as.numeric(ProductionYear),
     Age = as.numeric(Age),
     Price... = as.numeric(Price...),
   )
@@ -45,7 +44,7 @@ hist(fan_high$log10_price)
 
 
 # Create simple linear regression for each numerical variable
-indep_vars <- c("ProductionYear", "NumberofEngines", "Capacity", "Range.km.", "FuelConsumption.L.h.", "HourlyMaintenance...", "Age")
+indep_vars <- c("NumberofEngines", "Capacity", "Range.km.", "FuelConsumption.L.h.", "HourlyMaintenance...", "Age")
 models <- list()
 for(var in indep_vars) {
   formula <- as.formula(paste("log10_price ~ ", var))
@@ -53,9 +52,8 @@ for(var in indep_vars) {
 }
 
 
-#The only good ones are production year and age
+#The only good one is age
 op<-par(mfrow=c(3,3))
-plot(models[["ProductionYear"]],data = piston)
 plot(models[["NumberofEngines"]],data = piston)
 plot(models[["Capacity"]],data = piston)
 plot(models[["Range.km."]],data = piston)
@@ -66,27 +64,21 @@ par(op)
 
 
 #Same graphics for each data set, seems quite similar for every variable
-plot(models[["ProductionYear"]],data = fan_low)
 plot(models[["Age"]],data = fan_low)
 
-plot(models[["ProductionYear"]],data = fan_mid)
 plot(models[["Age"]],data = fan_mid)
 
-plot(models[["ProductionYear"]],data = fan_high)
 plot(models[["Age"]],data = fan_high)
 
 
 #Both have the same correlation, either of them can be chosen
-cor.test(piston$log10_price,piston$ProductionYear)
 cor.test(piston$log10_price,piston$Age)
 
-cor.test(fan_low$log10_price,fan_low$ProductionYear)
 cor.test(fan_low$log10_price,fan_low$Age)
 
-cor.test(fan_mid$log10_price,fan_mid$ProductionYear)
+
 cor.test(fan_mid$log10_price,fan_mid$Age)
 
-cor.test(fan_high$log10_price,fan_high$ProductionYear)
 cor.test(fan_high$log10_price,fan_high$Age)
 
 #We choose age, and as it is parabolic we try to increase R2 with the exponential
@@ -115,33 +107,7 @@ summary(fan_high_2)
 ##########################################
 #B)
 ##########################################
-# Create our multivariable model with production year and age
-multivar_model <- lm(log10_price ~( ProductionYear+I(ProductionYear^2)) + (Age+I(Age^2)), data = piston)
-summary(multivar_model)
-summary(piston_2)
-
-###1. Normality###
-#Shapiro Wilks Test
-shapiro.test(residuals(multivar_model))
-shapiro.test(residuals(piston_2))
-# Using Histogram
-hist(residuals(multivar_model))
-hist(residuals(piston_2))
-### 2. Homogenity of Variance ###
-# Residual Analysis #
-plot(residuals(multivar_model))
-plot(residuals(piston_2))
-##Breusch Pagan Test
-library(lmtest)
-bptest(multivar_model)
-bptest(piston_2)
-### 3. The independence of errors ### 
-dwtest(multivar_model, alternative = "two.sided")
-#NaNs appear, but we can already see that they are the same
-dwtest(piston_2, alternative = "two.sided")
-
-#After all the tests we see that they have exacly the same resutls because age and production year are the same, one just has negative slope and the other positive
-#So the multivariable model is the same as the single one
+# No other variable can be used.So the best is still our simple model
 
 
 ##########################################
